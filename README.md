@@ -42,3 +42,22 @@ The system consists of a client and a broker that communicate via ZeroMQ sockets
 the working of the code itself
 
 ![Program](./Resources/program_ZMQ.png)
+
+# Usage
+1. Compile the Code: Compile the provided C++ code using your C++ compiler.
+    ```bash
+    g++ -o calculator_service calculator_service.cpp -lzmq
+    
+2. Run the Service: Execute the compiled binary to start the calculator service.
+   ```bash
+   ./calculator_service
+   
+3. Send Messages: Send messages to the calculator service in the following format:
+   ```bash
+   Calculator>[operation]>[operand1]>[operand2]
+
+Replace `[operation]` with the desired arithmetic operation (`add`, `subtract`, `multiply`, or `divide`), `[operand1]` with the first operand, and `[operand2]` with the   second operand.Example:To perform a division operation with operands 20 and 4:
+
+      Calculator>divide>20>4
+   
+4. Receive Results: The service will perform the requested operation and send back the result.
