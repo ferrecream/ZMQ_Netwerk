@@ -36,3 +36,9 @@ The system consists of a client and a broker that communicate via ZeroMQ sockets
 6. Connection
    - The pusher and subscriber sockets connect to the specified server addresses.
    - If the connection fails, an error message is displayed.
+     
+![Overview](./Resources/Architecture_ZMQ.png)
+
+the working of the code itself
+
+![Program](./Resources/program_ZMQ.png)
