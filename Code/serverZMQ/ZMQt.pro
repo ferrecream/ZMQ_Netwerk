@@ -8,4 +8,8 @@ DEFINES += ZMQ_STATIC
 LIBS += -L$$PWD/../lib -lzmq -lnzmqt -lws2_32 -lIphlpapi
 INCLUDEPATH += $$PWD/../include
 
-SOURCES += main.cpp
+SOURCES += main.cpp \
+    game.cpp
+
+HEADERS += \
+    game.h
