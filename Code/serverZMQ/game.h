@@ -15,6 +15,12 @@ public:
     game(QCoreApplication *a);
     void startHeartbeat();
     void sendHeartbeat();
+    void handleRemind(const QString &msg);
+    void sendRemind(const QString &taskID, const QString &extraMessage);
+
+    double KtoC;
+    double CtoF;
+    double FtoK;
 
 public slots:
     void Service(const QList<QByteArray>& messages);
@@ -29,10 +35,13 @@ private:
     void handleTaskSubmit(const QString &msg);
     void handleTaskStatus(const QString &msg);
     void handleTaskComplete(const QString &msg);
+    void handleConvert(const QString &msg);
+
+
     nzmqt::ZMQSocket *pusher;
     nzmqt::ZMQSocket *subscriber;
     QMap<QString, QString> kvStore;
-    QMap<QString, QString> taskStore;
+
 };
 
 #endif // GAME_H

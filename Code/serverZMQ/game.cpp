@@ -77,6 +77,14 @@ void game::Service(const QList<QByteArray> &messages)
             {
                 handleTaskComplete(msg);
             }
+            else if (msg.contains("Ferre?>Convert"))
+            {
+                handleConvert(msg);
+            }
+            else if (msg.contains("Ferre?>Task>REMIND"))
+            {
+                handleRemind(msg);
+            }
             else
             {
                 QString error = "Ferre!>Unknown Command";
@@ -217,7 +225,7 @@ void game::startHeartbeat()
 {
     QTimer *heartbeatTimer = new QTimer(this);
     connect(heartbeatTimer, &QTimer::timeout, this, &game::sendHeartbeat);
-    heartbeatTimer->start(120000); // Send heartbeat every 10 seconds
+    heartbeatTimer->start(120000); // Send heartbeat every 120 seconds
 }
 
 void game::sendHeartbeat()
@@ -227,10 +235,12 @@ void game::sendHeartbeat()
     pusher->sendMessage(heartbeatMessage);
 }
 
+QMap<QString, QString> taskStore;
+
 void game::handleTaskSubmit(const QString &msg)
 {
     QList<QString> messageSplit = msg.split('>');
-    if (messageSplit.size() == 5)
+    if (messageSplit.size() == 6)
     {
         QString taskID = messageSplit[3];
         QString taskDetails = messageSplit[4];
@@ -251,6 +261,7 @@ void game::handleTaskSubmit(const QString &msg)
 
     }
 }
+
 
 void game::handleTaskStatus(const QString &msg)
 {
@@ -316,4 +327,124 @@ void game::handleTaskComplete(const QString &msg)
         pusher->sendMessage(errorMessage);
 
     }
+}
+void game::handleConvert(const QString &msg)
+{
+    QString command;
+
+    QList<QString> messageSplit = msg.split('>');
+    if (messageSplit.size() == 6)
+    {
+        QString OGOpp = messageSplit[2];
+        QString Opp2 = messageSplit[3];
+        QString X = messageSplit[4];
+        bool ok;
+        double Xdouble = X.toDouble(&ok);
+
+        if (!ok)
+        {
+            QString response = "Ferre!>Convert>Error: Invalid number format";
+            nzmqt::ZMQMessage responseMessage = nzmqt::ZMQMessage(response.toUtf8());
+            pusher->sendMessage(responseMessage);
+            return;
+        }
+
+        if (OGOpp == "Celsius" && Opp2 == "Kelvin")
+        {
+            double CtoK = Xdouble + 273.15;
+            command = QString("Ferre!>Convert>%1 Kelvin>").arg(CtoK);
+        }
+        else if (OGOpp == "Kelvin" && Opp2 == "Celsius")
+        {
+            double KtoC = Xdouble - 273.15;
+            command = QString("Ferre!>Convert>%1 Celsius>").arg(KtoC);
+        }
+        else if (OGOpp == "Fahrenheit" && Opp2 == "Celsius")
+        {
+            double FtoC = (Xdouble - 32) * 5 / 9;
+            command = QString("Ferre!>Convert>%1 Celsius>").arg(FtoC);
+        }
+        else if (OGOpp == "Celsius" && Opp2 == "Fahrenheit")
+        {
+            double CtoF = Xdouble * 9 / 5 + 32;
+            command = QString("Ferre!>Convert>%1 Fahrenheit>").arg(CtoF);
+        }
+        else if (OGOpp == "Kelvin" && Opp2 == "Fahrenheit")
+        {
+            double KtoF = (Xdouble - 273.15) * 9 / 5 + 32;
+            command = QString("Ferre!>Convert>%1 Fahrenheit>").arg(KtoF);
+        }
+        else if (OGOpp == "Fahrenheit" && Opp2 == "Kelvin")
+        {
+            double FtoK = (Xdouble - 32) * 5 / 9 + 273.15;
+            command = QString("Ferre!>Convert>%1 Kelvin>").arg(FtoK);
+        }
+        else
+        {
+            QString response = "Ferre!>Convert>Error: Invalid conversion types";
+            nzmqt::ZMQMessage responseMessage = nzmqt::ZMQMessage(response.toUtf8());
+            pusher->sendMessage(responseMessage);
+            return;
+        }
+
+        nzmqt::ZMQMessage message = nzmqt::ZMQMessage(command.toUtf8());
+        pusher->sendMessage(message);
+    }
+    else
+    {
+        QString response = "Ferre!>Convert>Error: Invalid message format";
+        nzmqt::ZMQMessage responseMessage = nzmqt::ZMQMessage(response.toUtf8());
+        pusher->sendMessage(responseMessage);
+    }
+}
+void game::handleRemind(const QString &msg)
+{
+    QList<QString> messageSplit = msg.split('>');
+    if (messageSplit.size() == 6)
+    {
+        QString taskID = messageSplit[3];
+        QString extraMessage = messageSplit[4];
+        bool ok;
+        int timeout = messageSplit[5].toInt(&ok);
+
+        if (!ok)
+        {
+            QString error = "Ferre!>Task>REMIND>Error: Invalid timeout value";
+            nzmqt::ZMQMessage errorMessage = nzmqt::ZMQMessage(error.toUtf8());
+            pusher->sendMessage(errorMessage);
+            return;
+        }
+
+        if (!taskStore.contains(taskID))
+        {
+            QString error = QString("Ferre!>Task>REMIND>Error: Task '%1' not found").arg(taskID);
+            nzmqt::ZMQMessage errorMessage = nzmqt::ZMQMessage(error.toUtf8());
+            pusher->sendMessage(errorMessage);
+            return;
+        }
+
+        QTimer *remindTimer = new QTimer(this);
+        connect(remindTimer, &QTimer::timeout, this, [this, taskID, extraMessage, remindTimer]() {
+            sendRemind(taskID, extraMessage);
+            remindTimer->deleteLater(); // Clean up the timer
+        });
+        remindTimer->start(timeout * 1000); // Start the timer with the specified timeout in milliseconds
+
+        QString response = "Ferre!>Task>REMIND>Success";
+        nzmqt::ZMQMessage responseMessage = nzmqt::ZMQMessage(response.toUtf8());
+        pusher->sendMessage(responseMessage);
+    }
+    else
+    {
+        QString error = "Ferre!>Task>REMIND>Error: Invalid message format";
+        nzmqt::ZMQMessage errorMessage = nzmqt::ZMQMessage(error.toUtf8());
+        pusher->sendMessage(errorMessage);
+    }
+}
+
+void game::sendRemind(const QString &taskID, const QString &extraMessage)
+{
+    QString remindMessage = QString("Ferre!>Task>REMIND>%1>%2").arg(taskID, extraMessage);
+    nzmqt::ZMQMessage remindZMQMessage = nzmqt::ZMQMessage(remindMessage.toUtf8());
+    pusher->sendMessage(remindZMQMessage);
 }
